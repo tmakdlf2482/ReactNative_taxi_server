@@ -22,6 +22,7 @@
 ## 개발환경
 1. Restful API 사용을 쉽게 하기 위한 라이브러리 : `npm i -g express-generator` <br />
 2. 서버 프로젝트 생성 : `express taxi-server` <br />
+3. mysql 인터페이스를 통해 MariaDB에 접근하기 위한 라이브러리 : `npm i mysql` <br />
 
 ## 공식문서들
 1. 
