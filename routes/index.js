@@ -24,7 +24,7 @@ router.get('/taxi/test', function(req, res, next) {
   });
 });
 
-// 로그인
+// 로그인 (유저)
 router.post('/taxi/login', function(req, res, next) {
   console.log('login / req.body = ' + JSON.stringify(req.body));
 
@@ -54,7 +54,7 @@ router.post('/taxi/login', function(req, res, next) {
   });
 });
 
-// 회원가입
+// 회원가입 (유저)
 router.post('/taxi/register', function(req, res) {
   console.log('register / req.body = ' + JSON.stringify(req.body));
 
@@ -91,7 +91,7 @@ router.post('/taxi/register', function(req, res) {
   });
 });
 
-// 콜 목록 불러오기
+// 콜 목록 불러오기 (유저)
 router.post('/taxi/list', function(req, res) {
   console.log('list / req.body = ' + JSON.stringify(req.body));
 
@@ -115,7 +115,7 @@ router.post('/taxi/list', function(req, res) {
   });
 });
 
-// 유저가 새로운 콜 등록
+// 새로운 콜 등록 (유저)
 router.post('/taxi/call', function(req, res) {
   console.log('call / req.body = ' + JSON.stringify(req.body));
 
@@ -134,7 +134,6 @@ router.post('/taxi/call', function(req, res) {
   }
 
   let queryStr = `INSERT INTO tb_call VALUES (NULL, "${userId}", "${startLat}", "${startLng}", "${startAddr}", "${endLat}", "${endLng}", "${endAddr}", "요청", "")`;
-
   console.log('call / queryStr = ' + queryStr);
 
   db.query(queryStr, (err, rows, fields) => {
@@ -147,6 +146,43 @@ router.post('/taxi/call', function(req, res) {
       console.log('call / err = ' + err);
 
       res.json([{code: 2, message: '택시 호출이 실패하였습니다.', data: err}]);
+    }
+  });
+});
+
+// 회원가입 (기사)
+router.post('/driver/register', function(req, res) {
+  console.log('driver-register / req.body = ' + JSON.stringify(req.body));
+
+  let driverId = req.body.driverId;
+  let driverPw = req.body.driverPw;
+
+  console.log('driver-register / driverId = ' + driverId + ', driverPw = ' + driverPw);
+
+  if (!(driverId && driverPw)) {
+    res.json([{code: 1, message: '아이디 또는 비밀번호가 없습니다.'}]);
+
+    return;
+  }
+
+  let queryStr = `INSERT INTO tb_driver VALUES ("${driverId}", "${driverPw}", "")`;
+  console.log('driver-register / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('driver-register / rows = ' + JSON.stringify(rows));
+
+      res.json([{code: 0, message: '회원가입이 완료되었습니다.'}]);
+    }
+    else { // query에 에러가 있으면
+      console.log('driver-register / err = ' + err);
+
+      if (err.code == 'ER_DUP_ENTRY') { // DB안에 PK(user_id)값을 중복으로 넣으려고 할 때 에러 발생
+        res.json([{code: 2, message: '이미 등록된 아이디입니다.'}]);
+      }
+      else { // 알 수 없는 에러
+        res.json([{code: 3, message: '알 수 없는 오류가 발생했습니다.', data: err}]);
+      }
     }
   });
 });
