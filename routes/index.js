@@ -91,7 +91,7 @@ router.post('/taxi/register', function(req, res) {
   });
 });
 
-// 콜 호출 목록
+// 콜 목록 불러오기
 router.post('/taxi/list', function(req, res) {
   console.log('list / req.body = ' + JSON.stringify(req.body));
 
@@ -111,6 +111,42 @@ router.post('/taxi/list', function(req, res) {
       console.log('list / err = ' + err);
 
       res.json([{code: 1, message: '택시 호출 목록 불러오기에 실패하였습니다.', data: err}]);
+    }
+  });
+});
+
+// 유저가 새로운 콜 등록
+router.post('/taxi/call', function(req, res) {
+  console.log('call / req.body = ' + JSON.stringify(req.body));
+
+  let userId = req.body.userId; // 누가 콜을 등록했는지
+  let startLat = req.body.startLat; // 출발 위도
+  let startLng = req.body.startLng; // 출발 경도
+  let startAddr = req.body.startAddr; // 출발 주소
+  let endLat = req.body.endLat; // 도착 위도
+  let endLng = req.body.endLng; // 도착 경도
+  let endAddr = req.body.endAddr; // 도착 주소
+
+  if (!(userId && startAddr && startLat && startLng && endAddr && endLat && endLng)) {
+    // 7개의 데이터 중 하나라도 빠져 있다면
+    res.json([{code: 1, message: '출발지 또는 도착지 정보가 없습니다.'}]);
+    return;
+  }
+
+  let queryStr = `INSERT INTO tb_call VALUES (NULL, "${userId}", "${startLat}", "${startLng}", "${startAddr}", "${endLat}", "${endLng}", "${endAddr}", "요청", "")`;
+
+  console.log('call / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('call / rows = ' + JSON.stringify(rows));
+
+      res.json([{code: 0, message: '택시 호출이 완료되었습니다.'}]);
+    }
+    else { // query에 에러가 있으면
+      console.log('call / err = ' + err);
+
+      res.json([{code: 2, message: '택시 호출이 실패하였습니다.', data: err}]);
     }
   });
 });
