@@ -33,7 +33,7 @@ router.post('/taxi/login', function(req, res, next) {
   console.log('login / queryStr = ' + queryStr);
 
   db.query(queryStr, (err, rows, fields) => {
-    if (!err) {
+    if (!err) { // query에 에러가 없으면
       console.log('login / rows = ' + JSON.stringify(rows));
 
       let len = Object.keys(rows).length; // 가지고 온 데이터가 얼마나 되는지 체크
@@ -44,10 +44,46 @@ router.post('/taxi/login', function(req, res, next) {
       
       res.json([{code: code, message: message}]);
     }
-    else {
+    else { // query에 에러가 있으면
       console.log('login / err = ' + err);
 
       res.json([{code: 1, message: err}]);
+    }
+  });
+});
+
+router.post('/taxi/register', function(req, res) {
+  console.log('register / req.body = ' + JSON.stringify(req.body));
+
+  let userId = req.body.userId;
+  let userPw = req.body.userPw;
+
+  console.log('register / userId = ' + userId + ', userPw = ' + userPw);
+
+  if (!(userId && userPw)) {
+    res.json([{code: 1, message: '아이디 또는 비밀번호가 없습니다.'}]);
+    
+    return;
+  }
+
+  let queryStr = `INSERT INTO tb_user VALUES ("${userId}", "${userPw}", "")`;
+  console.log('register / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('register / rows = ' + JSON.stringify(rows));
+
+      res.json([{code: 0, message: '회원가입이 완료되었습니다.'}]);
+    }
+    else { // query에 에러가 있으면
+      console.log('register / err = ' + err);
+
+      if (err.code == 'ER_DUP_ENTRY') { // DB안에 PK(user_id)값을 중복으로 넣으려고 할 때 에러 발생
+        res.json([{code: 2, message: '이미 등록된 아이디입니다.'}]);
+      }
+      else { // 알 수 없는 에러
+        res.json([{code: 3, message: '알 수 없는 오류가 발생했습니다.', data: err}]);
+      }
     }
   });
 });
