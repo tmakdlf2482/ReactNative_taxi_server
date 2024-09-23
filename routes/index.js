@@ -8,6 +8,7 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
+// 테스트
 router.get('/taxi/test', function(req, res, next) {
   db.query('SELECT * FROM tb_user', (err, rows, fields) => {
     if (!err) {
@@ -23,6 +24,7 @@ router.get('/taxi/test', function(req, res, next) {
   });
 });
 
+// 로그인
 router.post('/taxi/login', function(req, res, next) {
   console.log('login / req.body = ' + JSON.stringify(req.body));
 
@@ -52,6 +54,7 @@ router.post('/taxi/login', function(req, res, next) {
   });
 });
 
+// 회원가입
 router.post('/taxi/register', function(req, res) {
   console.log('register / req.body = ' + JSON.stringify(req.body));
 
@@ -84,6 +87,30 @@ router.post('/taxi/register', function(req, res) {
       else { // 알 수 없는 에러
         res.json([{code: 3, message: '알 수 없는 오류가 발생했습니다.', data: err}]);
       }
+    }
+  });
+});
+
+// 콜 호출 목록
+router.post('/taxi/list', function(req, res) {
+  console.log('list / req.body = ' + JSON.stringify(req.body));
+
+  let userId = req.body.userId;
+  console.log('list / userId = ' + userId);
+
+  let queryStr = `SELECT * FROM tb_call WHERE user_Id="${userId}" ORDER BY id DESC`; // ORDER BY를 사용하는 이유는 최근 콜 목록을 보기 위해
+  console.log('list / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('list / rows = ' + JSON.stringify(rows));
+
+      res.json([{code: 0, message: '택시 호출 목록 불러오기에 성공하였습니다.', data: rows}]);
+    }
+    else { // query에 에러가 있으면
+      console.log('list / err = ' + err);
+
+      res.json([{code: 1, message: '택시 호출 목록 불러오기에 실패하였습니다.', data: err}]);
     }
   });
 });
