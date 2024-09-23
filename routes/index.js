@@ -245,4 +245,42 @@ router.post('/driver/list', function(req, res) {
   });
 });
 
+// 배차, 콜 받음 (기사)
+router.post('/driver/accept', function(req, res) {
+  console.log('driver-accept / req.body = ' + JSON.stringify(req.body));
+
+  let callId = req.body.callId; // DB에서 tb_call 테이블의 id 컬럼
+  let driverId = req.body.driverId;
+
+  console.log('driver-accept / callId = ' + callId + ', driverId = ' + driverId);
+
+  if (!(callId && driverId)) {
+    res.json([{code: 1, message: 'callId 또는 driverId가 없습니다.'}]);
+
+    return;
+  }
+
+  // 배차가 됐기 때문에 요청 상태에서 응답 상태로 바뀌어야 함
+  let queryStr = `UPDATE tb_call SET driver_id="${driverId}", call_state="응답" WHERE id=${callId}`;
+  console.log('driver-accept / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('driver-accept / rows = ' + JSON.stringify(rows));
+
+      if (rows.affectedRows > 0) { // 영향을 받은 줄이 있음. 즉 업데이트가 되었음
+        res.json([{code: 0, message: '배차가 완료되었습니다.'}]);
+      }
+      else { // 모종의 이유로 요청한 callId가 존재 하지 않았다면
+        res.json([{code: 2, message: '이미 완료되었거나 존재하지 않는 콜입니다.'}]);
+      }
+    }
+    else { // query에 에러가 있으면
+      console.log('driver-accept / err = ' + err);
+
+      res.json([{code: 3, message: '알 수 없는 오류가 발생하였습니다.', data: err}]);
+    }
+  });
+});
+
 module.exports = router;
