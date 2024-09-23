@@ -217,4 +217,32 @@ router.post('/driver/login', function(req, res) {
   });
 });
 
+// 콜 목록 불러오기 (기사)
+router.post('/driver/list', function(req, res) {
+  console.log('driver-list / req.body = ' + JSON.stringify(req.body));
+
+  let driverId = req.body.driverId; // 다른 드라이버에게 배차가 된 콜을 이 드라이버가 볼 필요가 없음
+
+  console.log('driver-list / driverId = ' + driverId);
+
+  // 1. 기사 본인이 배차가 된 콜일 경우 (driver_id="${driverId}")
+  // 2. 아직 배차가 안된 콜인 경우, 최신 콜이 가장 앞에 오도록 (call_state="요청" ORDER BY id DESC)
+  let queryStr = `SELECT * FROM tb_call WHERE driver_id="${driverId}" OR call_state="요청" ORDER BY id DESC`;
+
+  console.log('driver-list / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('driver-list / rows = ' + JSON.stringify(rows));
+
+      res.json([{code: 0, message: '택시 호출 목록 불러오기에 성공하였습니다.', data: rows}]);
+    }
+    else { // query에 에러가 있으면
+      console.log('driver-list / err = ' + err);
+
+      res.json([{code: 1, message: '택시 호출 목록 불러오기에 실패하였습니다.', data: err}]);
+    }
+  });
+});
+
 module.exports = router;
