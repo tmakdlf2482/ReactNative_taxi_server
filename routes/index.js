@@ -38,7 +38,7 @@ router.post('/taxi/login', function(req, res, next) {
     if (!err) { // query에 에러가 없으면
       console.log('login / rows = ' + JSON.stringify(rows));
 
-      let len = Object.keys(rows).length; // 가지고 온 데이터가 얼마나 되는지 체크
+      let len = Object.keys(rows).length; // 가지고 온 데이터가 얼마나 되는지 체크 (실제로 몇 개의 row가 반환되었는지 체크)
       console.log('login / len = ' + len);
 
       let code = (len==0) ? 1 : 0; // 0은 정상 실행, 즉 데이터가 하나도 없으면 1출력//하나라도 있으면 0출력
@@ -183,6 +183,36 @@ router.post('/driver/register', function(req, res) {
       else { // 알 수 없는 에러
         res.json([{code: 3, message: '알 수 없는 오류가 발생했습니다.', data: err}]);
       }
+    }
+  });
+});
+
+// 로그인 (기사)
+router.post('/driver/login', function(req, res) {
+  console.log('driver-login / req.body = ' + JSON.stringify(req.body));
+
+  let driverId = req.body.driverId;
+  let driverPw = req.body.driverPw;
+
+  let queryStr = `SELECT * FROM tb_driver WHERE driver_id="${driverId}" AND driver_pw="${driverPw}"`;
+  console.log('driver-login / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('driver-login / rows = ' + JSON.stringify(rows));
+
+      let len = Object.keys(rows).length; // 가지고 온 데이터가 얼마나 되는지 체크 (실제로 몇 개의 row가 반환되었는지 체크)
+      console.log('driver-login / len = ' + len);
+
+      let code = (len==0) ? 1 : 0; // 0은 정상 실행, 즉 데이터가 하나도 없으면 1출력//하나라도 있으면 0출력
+      let message = (len==0) ? '아이디 또는 비밀번호가 잘못 입력되었습니다.' : '로그인 성공';
+      
+      res.json([{code: code, message: message}]);
+    }
+    else { // query에 에러가 있으면
+      console.log('driver-login / err = ' + err);
+
+      res.json([{code: 1, message: err}]);
     }
   });
 });
