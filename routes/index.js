@@ -165,6 +165,22 @@ router.post('/taxi/list', function(req, res) {
     if (!err) { // query에 에러가 없으면
       console.log('list / rows = ' + JSON.stringify(rows));
 
+      rows = rows.map(row => { // 유저가 콜을 요청한 시간 가져오기
+        const requestTime = new Date(row.request_time); // 시간 가져옴
+
+        // 오늘 날짜인지 아닌지 체크
+        const today = new Date(); // 지금 현재 시간 가져옴
+        const isToday = requestTime.toDateString() === today.toDateString(); // true이면 오늘, false이면 오늘이 아님
+        
+        // 날짜와 시간을 분리
+        const formattedDate = requestTime.toISOString().split('T')[0]; // 날짜만 가져옴, YYYY-MM-DD 형식
+        const formattedTime = requestTime.toTimeString().split(' ')[0].slice(0, 5); // 시간만 가져옴, HH:mm 형식
+
+        row.formatted_time = isToday ? formattedTime : formattedDate; // 기존 row에 formatted_time가 추가된 상태로 클라이언트에 전송
+
+        return row;
+      });
+
       res.json([{code: 0, message: '택시 호출 목록 불러오기에 성공하였습니다.', data: rows}]);
     }
     else { // query에 에러가 있으면
