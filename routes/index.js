@@ -2,11 +2,65 @@ var express = require('express');
 var router = express.Router();
 
 const db = require('../database/db_connect');
+const admin = require('firebase-admin');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
+
+// fcm_token이 들어왔을 때(유저 로그인, 유저 회원가입, 기사 로그인, 기사 회원가입) update하는 함수
+const updateFcm = (fcmToken, table, idColName, id) => {
+  const queryStr = `UPDATE ${table} SET fcm_token="${fcmToken}" WHERE ${idColName}="${id}"`;  
+  console.log('updateFcm / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (err) { // query에 에러가 있으면
+      console.log('updateFcm / err = ' + err);
+    }
+  });
+};
+
+// 기사에게 Push를 보내는 함수 (유저가 택시 호출을 하면 모든 기사에게 이 호출을 받을건지 메시지 보냄)
+const sendPushToAllDriver = () => {
+  let queryStr = 'SELECT fcm_token FROM tb_driver'; // 기사분들중에 혹시나 fcm_token이 없으면 그 사람은 알림을 받을 수 없는 사람임
+
+  console.log('sendPushToAllDriver / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      for (row of rows) {
+        console.log('allDriver - fcm_token = ' + row.fcm_token);
+
+        if (row.fcm_token) {
+          sendFcm(row.fcm_token, '배차 요청이 있습니다.');
+        }
+      }
+    }
+  });
+};
+
+// 1명의 유저에게 Push를 보내는 함수 (기사분이 유저가 부른 콜을 수락했을 때 유저에게 콜을 수락했다는 메시지 보냄)
+const sendPushToUser = (userId) => {
+  let queryStr = `SELECT fcm_token FROM tb_user WHERE user_id="${userId}"`;
+  console.log('sendPushToUser / queryStr = ' + queryStr);
+
+  db.query(queryStr, (err, rows, fields) => {
+    if (!err) { // query에 에러가 없으면
+      console.log('sendPushToUser / rows = ' + JSON.stringify(rows));
+
+      if (Object.keys(rows).length > 0 && rows[0].fcm_token) { // 필드가 있고, fcm_token도 있으면
+        sendFcm(rows[0].fcm_token, '기사분이 호출을 수락하였습니다.');
+      }
+      else {
+        console.log('Push 전송 실패');
+      }
+    }
+    else { // query에 에러가 있으면
+      console.log('sendPushToUser / err = ' + err);
+    }
+  });
+};
 
 // 테스트
 router.get('/taxi/test', function(req, res, next) {
@@ -30,6 +84,7 @@ router.post('/taxi/login', function(req, res, next) {
 
   let userId = req.body.userId;
   let userPw = req.body.userPw;
+  let fcmToken = req.body.fcmToken || ''; // fcmToken이 정상적으로 전달되었다면 fcmToken 변수에 넣고, 전달이 안됐다면 빈 문자열을 fcmToken 변수에 넣음
 
   let queryStr = `SELECT * FROM tb_user WHERE user_id="${userId}" AND user_pw="${userPw}"`;
   console.log('login / queryStr = ' + queryStr);
@@ -44,6 +99,10 @@ router.post('/taxi/login', function(req, res, next) {
       let code = (len==0) ? 1 : 0; // 0은 정상 실행, 즉 데이터가 하나도 없으면 1출력//하나라도 있으면 0출력
       let message = (len==0) ? '아이디 또는 비밀번호가 잘못 입력되었습니다.' : '로그인 성공';
       
+      if (code == 0) { // 로그인이 정상적으로 성공하면
+        updateFcm(fcmToken, 'tb_user', 'user_id', userId);
+      }
+
       res.json([{code: code, message: message}]);
     }
     else { // query에 에러가 있으면
@@ -60,6 +119,7 @@ router.post('/taxi/register', function(req, res) {
 
   let userId = req.body.userId;
   let userPw = req.body.userPw;
+  let fcmToken = req.body.fcmToken || ''; // fcmToken이 정상적으로 전달되었다면 fcmToken 변수에 넣고, 전달이 안됐다면 빈 문자열을 fcmToken 변수에 넣음
 
   console.log('register / userId = ' + userId + ', userPw = ' + userPw);
 
@@ -69,7 +129,7 @@ router.post('/taxi/register', function(req, res) {
     return;
   }
 
-  let queryStr = `INSERT INTO tb_user VALUES ("${userId}", "${userPw}", "")`;
+  let queryStr = `INSERT INTO tb_user VALUES ("${userId}", "${userPw}", "${fcmToken}")`;
   console.log('register / queryStr = ' + queryStr);
 
   db.query(queryStr, (err, rows, fields) => {
@@ -133,12 +193,14 @@ router.post('/taxi/call', function(req, res) {
     return;
   }
 
-  let queryStr = `INSERT INTO tb_call VALUES (NULL, "${userId}", "${startLat}", "${startLng}", "${startAddr}", "${endLat}", "${endLng}", "${endAddr}", "요청", "")`;
+  let queryStr = `INSERT INTO tb_call VALUES (NULL, "${userId}", "${startLat}", "${startLng}", "${startAddr}", "${endLat}", "${endLng}", "${endAddr}", "요청", "", CURRENT_TIMESTAMP)`;
   console.log('call / queryStr = ' + queryStr);
 
   db.query(queryStr, (err, rows, fields) => {
     if (!err) { // query에 에러가 없으면
       console.log('call / rows = ' + JSON.stringify(rows));
+
+      sendPushToAllDriver(); // fcm_token을 가지고 있는 기사분들에게 일제히 유저가 택시 콜을 불렀다고 메시지를 날림
 
       res.json([{code: 0, message: '택시 호출이 완료되었습니다.'}]);
     }
@@ -156,6 +218,7 @@ router.post('/driver/register', function(req, res) {
 
   let driverId = req.body.driverId;
   let driverPw = req.body.driverPw;
+  let fcmToken = req.body.fcmToken || ''; // fcmToken이 정상적으로 전달되었다면 fcmToken 변수에 넣고, 전달이 안됐다면 빈 문자열을 fcmToken 변수에 넣음
 
   console.log('driver-register / driverId = ' + driverId + ', driverPw = ' + driverPw);
 
@@ -165,7 +228,7 @@ router.post('/driver/register', function(req, res) {
     return;
   }
 
-  let queryStr = `INSERT INTO tb_driver VALUES ("${driverId}", "${driverPw}", "")`;
+  let queryStr = `INSERT INTO tb_driver VALUES ("${driverId}", "${driverPw}", "${fcmToken}")`;
   console.log('driver-register / queryStr = ' + queryStr);
 
   db.query(queryStr, (err, rows, fields) => {
@@ -193,6 +256,7 @@ router.post('/driver/login', function(req, res) {
 
   let driverId = req.body.driverId;
   let driverPw = req.body.driverPw;
+  let fcmToken = req.body.fcmToken || ''; // fcmToken이 정상적으로 전달되었다면 fcmToken 변수에 넣고, 전달이 안됐다면 빈 문자열을 fcmToken 변수에 넣음
 
   let queryStr = `SELECT * FROM tb_driver WHERE driver_id="${driverId}" AND driver_pw="${driverPw}"`;
   console.log('driver-login / queryStr = ' + queryStr);
@@ -207,6 +271,10 @@ router.post('/driver/login', function(req, res) {
       let code = (len==0) ? 1 : 0; // 0은 정상 실행, 즉 데이터가 하나도 없으면 1출력//하나라도 있으면 0출력
       let message = (len==0) ? '아이디 또는 비밀번호가 잘못 입력되었습니다.' : '로그인 성공';
       
+      if (code == 0) { // 로그인이 정상적으로 성공하면
+        updateFcm(fcmToken, 'tb_call', 'driver_id', driverId);
+      }
+
       res.json([{code: code, message: message}]);
     }
     else { // query에 에러가 있으면
@@ -251,6 +319,7 @@ router.post('/driver/accept', function(req, res) {
 
   let callId = req.body.callId; // DB에서 tb_call 테이블의 id 컬럼
   let driverId = req.body.driverId;
+  let userId = req.body.userId;
 
   console.log('driver-accept / callId = ' + callId + ', driverId = ' + driverId);
 
@@ -269,6 +338,8 @@ router.post('/driver/accept', function(req, res) {
       console.log('driver-accept / rows = ' + JSON.stringify(rows));
 
       if (rows.affectedRows > 0) { // 영향을 받은 줄이 있음. 즉 업데이트가 되었음
+        sendPushToUser(userId);
+        
         res.json([{code: 0, message: '배차가 완료되었습니다.'}]);
       }
       else { // 모종의 이유로 요청한 callId가 존재 하지 않았다면
@@ -282,5 +353,33 @@ router.post('/driver/accept', function(req, res) {
     }
   });
 });
+
+// Push 테스트를 위한 함수
+router.post('/push/test', function(req, res, next) {
+  console.log('push-test / req.body = ' + JSON.stringify(req.body));
+
+  let fcmToken = req.body.fcmToken;
+  let message = req.body.message;
+
+  sendFcm(fcmToken, message); // 알림을 보냄
+
+  res.json([{code: 0, message: 'Push 테스트'}]);
+});
+
+// Push를 보내는 함수
+const sendFcm = (fcmToken, msg) => {
+  // fcmToken : 알림을 보낼 때 이 알림을 받을 기기를 구분할 수 있는 코드
+  // fcmToken을 받아와 그 기기에 알림을 보낼 수 있음
+  const message = {notification: { title: '알림', body: msg }, token: fcmToken};
+
+  // admin에게 직접 메시지를 보내는 로직
+  admin.messaging().send(message)
+  .then((response) => {
+    console.log('-- Push 성공');
+  })
+  .catch((error) => {
+    console.log('-- Push 실패' + error);
+  });
+};
 
 module.exports = router;

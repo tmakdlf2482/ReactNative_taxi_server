@@ -12,6 +12,12 @@ var app = express();
 const db = require('./database/db_connect');
 db.connect(); // DB 연결
 
+// firebase admin을 이용해 메시지를 보내는 기능을 사용하기 위한 준비
+var admin = require('firebase-admin');
+admin.initializeApp({
+  credential: admin.credential.cert(require('./call-taxi-ServiceAccountKey.json')) // 인증서
+});
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
