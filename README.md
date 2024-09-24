@@ -20,10 +20,7 @@
 ![diagram](https://github.com/user-attachments/assets/e790aed2-7b93-428d-b10f-37d4b3278948)
 
 ## 개발환경
-1. Restful API 사용을 쉽게 하기 위한 라이브러리 : `npm i -g express-generator` <br />
-2. 서버 프로젝트 생성 : `express taxi-server` <br />
-3. mysql 인터페이스를 통해 MariaDB에 접근하기 위한 라이브러리 : `npm i mysql` <br />
-4. firebase 관련 라이브러리(푸시 알림 서비스 이용하기 위함) : `npm i firebase-admin` <br />
-
-## 공식문서들
-1. 
+1. Restful API 사용을 쉽게 하기 위한 라이브러리[서버] : `npm i -g express-generator` <br />
+2. 서버 프로젝트 생성[서버] : `express taxi-server` <br />
+3. mysql 인터페이스를 통해 MariaDB에 접근하기 위한 라이브러리[서버] : `npm i mysql` <br />
+4. firebase 관련 라이브러리(푸시 알림 서비스 이용하기 위함)[서버] : `npm i firebase-admin` <br />
